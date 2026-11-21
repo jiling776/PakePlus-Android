@@ -29,6 +29,8 @@ input[type="file"]{display:none}
 .lyric-line{text-align:center;padding:8px 0;color:#999;font-size:16px}
 .lyric-line.active{color:#4285f4;font-size:18px;font-weight:bold}
 .folder-input{padding:10px;border-radius:10px;border:1px solid #444;background:#1e1e1e;color:#fff;width:60%}
+.folder-song-item{padding:8px 12px;border-bottom:1px solid #2a2a2a;display:flex;justify-content:space-between;align-items:center}
+.folder-title{display:flex;justify-content:space-between;align-items:center}
 </style>
 </head>
 <body>
@@ -185,7 +187,7 @@ function toggleLyric(){
 function createFolder(){
   let name = document.getElementById("folderName").value.trim();
   if(!name) return;
-  data.folders.push({id:Date.now(),name,songIds:[]});
+  data.folders.push({id:Date.now(),name});
   document.getElementById("folderName").value="";
   saveData();renderAll();
 }
@@ -248,40 +250,76 @@ function renderSongList(){
       <div class="name">${s.name}</div>
       <div>
         <button class="btn" onclick="playSong(${i})">播放</button>
+        <button class="btn gray" onclick="openAddToFolder(${i})">加入歌单</button>
         <button class="btn red" onclick="delSong(${i})">删除</button>
       </div>`
     wrap.appendChild(div);
   })
 }
+
+// 弹出选择歌单，把指定歌曲加入
+function openAddToFolder(songIndex){
+  let folderOptions = data.folders.map(f=>`${f.id}:${f.name}`).join("\n");
+  if(!folderOptions) return alert("你还没有创建任何分类文件夹！");
+  let fid = prompt(`选择文件夹ID加入：\n${folderOptions}`);
+  if(!fid) return;
+  fid = Number(fid);
+  let targetFolder = data.folders.find(x=>x.id===fid);
+  if(!targetFolder) return alert("文件夹不存在");
+  data.songs[songIndex].folderId = fid;
+  saveData();renderAll();
+  alert("✅ 已加入【"+targetFolder.name+"】");
+}
+
+function removeSongFromFolder(songIndex){
+  data.songs[songIndex].folderId = null;
+  saveData();renderAll();
+}
+
 function delSong(i){
   data.songs.splice(i,1);
   if(curSongIndex===i) curSongIndex=-1;
   saveData();renderAll();
 }
+function delFolder(fid){
+  // 删除文件夹的时候，把里面歌曲的folderId清空
+  data.songs.forEach(s=>{if(s.folderId===fid) s.folderId=null;})
+  data.folders = data.folders.filter(x=>x.id!==fid);
+  saveData();renderAll();
+}
+
 function renderFolderList(){
   let wrap = document.getElementById("folderList");
   wrap.innerHTML="";
   data.folders.forEach(f=>{
+    let folderSongs = data.songs.filter(s=>s.folderId === f.id);
     let div=document.createElement("div");
     div.className="card";
+    let songHtml = "";
+    folderSongs.forEach((s)=>{
+      let idx = data.songs.indexOf(s);
+      songHtml += `
+        <div class="folder-song-item">
+          <div class="name">${s.name}</div>
+          <div>
+            <button class="btn" onclick="playSong(${idx})">播放</button>
+            <button class="btn red" onclick="removeSongFromFolder(${idx})">移出</button>
+          </div>
+        </div>`
+    })
     div.innerHTML=`
-      <div style="font-size:18px;margin-bottom:8px">📁 ${f.name}</div>
-      <div>
-        <button class="btn gray" onclick="addSongToFolder(${f.id})">添加歌曲到此文件夹</button>
+      <div class="folder-title">
+        <div style="font-size:18px">📁 ${f.name} <span style="color:#aaa;font-size:14px">(${folderSongs.length}首)</span></div>
         <button class="btn red" onclick="delFolder(${f.id})">删除分类</button>
-      </div>`
+      </div>
+      <div style="margin-top:10px">
+        ${folderSongs.length?songHtml:"<div style='color:#999;padding:8px'>暂无歌曲</div>"}
+      </div>
+    `
     wrap.appendChild(div);
   })
 }
-function delFolder(id){
-  data.folders = data.folders.filter(x=>x.id!==id);
-  saveData();renderAll();
-}
-function addSongToFolder(fid){
-  if(curSongIndex<0) return alert("先播放一首歌");
-  data.songs[curSongIndex].folderId = fid;
-  saveData();alert("已归类");
-}
+
 renderAll();
 </script>
 </body>
