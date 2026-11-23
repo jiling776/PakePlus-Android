@@ -2,325 +2,209 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>本地音乐播放器</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>本地音乐播放器｜歌单下拉版</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui}
-body{background:#121212;color:#eee;padding-bottom:140px;}
-.tab-bar{display:flex;position:sticky;top:0;background:#1f1f1f;z-index:99}
-.tab{flex:1;text-align:center;padding:14px;border:none;background:transparent;color:#aaa;font-size:16px}
-.tab.active{color:#fff;border-bottom:2px solid #4285f4}
-.container{padding:16px}
-.card{background:#1e1e1e;border-radius:14px;padding:16px;margin-bottom:14px}
-input[type="file"]{display:none}
-.btn{padding:11px 14px;border-radius:10px;border:none;background:#4285f4;color:#fff;font-size:15px;margin:4px}
-.btn.gray{background:#333}
-.btn.red{background:#c23535}
-.item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #2d2d2d}
-.name{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.play-bar{position:fixed;bottom:0;left:0;right:0;background:#1f1f1f;padding:14px}
-.progress{width:100%;height:5px;background:#333;border-radius:999;margin-bottom:10px}
-.progress-inner{height:5px;background:#4285f4;border-radius:999;width:0%}
-.ctrl{display:flex;align-items:center;justify-content:center;gap:16px}
-.ctrl button{background:transparent;border:none;color:#fff;font-size:24px}
-.time-text{display:flex;justify-content:space-between;font-size:12px;color:#aaa;margin-bottom:8px}
-.lyrics-box{height:240px;overflow:hidden;position:relative;margin:10px 0}
-.lyrics-wrap{transition:transform 0.3s ease}
-.lyric-line{text-align:center;padding:8px 0;color:#999;font-size:16px}
-.lyric-line.active{color:#4285f4;font-size:18px;font-weight:bold}
-.folder-input{padding:10px;border-radius:10px;border:1px solid #444;background:#1e1e1e;color:#fff;width:60%}
-.folder-song-item{padding:8px 12px;border-bottom:1px solid #2a2a2a;display:flex;justify-content:space-between;align-items:center}
-.folder-title{display:flex;justify-content:space-between;align-items:center}
+body{background:#121212;color:#eee;padding:16px}
+.container{max-width:900px;margin:0 auto}
+h2{margin-bottom:16px}
+.area{background:#1e1e1e;padding:14px;border-radius:10px;margin-bottom:12px}
+button,select,input{padding:8px 12px;border:none;border-radius:6px;font-size:14px;margin:4px}
+button{background:#2563eb;color:#fff;cursor:pointer}
+button.secondary{background:#333}
+#lyricBox{height:220px;overflow:auto;text-align:center;line-height:2.2;color:#aaa}
+.lyric-active{color:#38bdf8;font-weight:bold}
+.song-item{padding:6px 8px;background:#2a2a2a;border-radius:6px;margin:4px;display:flex;justify-content:space-between;align-items:center}
 </style>
 </head>
 <body>
-<div class="tab-bar">
-  <button class="tab active" data-tab="music">歌曲</button>
-  <button class="tab" data-tab="folder">分类文件夹</button>
-  <button class="tab" data-tab="lyric">歌词</button>
-</div>
+<div class="container">
+  <h2>本地音乐播放器</h2>
 
-<div class="container" id="musicPage">
-  <div class="card">
-    <button class="btn" id="selectAudioBtn">导入音乐</button>
-    <input type="file" id="audioInput" accept="audio/*" multiple>
-    <button class="btn gray" id="bindLrcBtn">绑定LRC歌词</button>
-    <input type="file" id="lrcInput" accept=".lrc">
+  <div class="area">
+    <input type="file" id="audioFile" accept="audio/*" multiple>
+    <button id="loadLrcBtn">加载LRC歌词</button>
+    <br>
+    <audio id="audio" controls>
+    <div id="lyricBox"></div>
   </div>
-  <div id="songList"></div>
-</div>
 
-<div class="container" id="folderPage" style="display:none">
-  <div class="card">
-    <input class="folder-input" id="folderName" placeholder="输入文件夹名称">
-    <button class="btn" onclick="createFolder()">新建分类</button>
+  <div class="area">
+    <h4>新建歌单</h4>
+    <input type="text" id="newFolderName" placeholder="歌单名称">
+    <button id="addFolderBtn">创建</button>
   </div>
-  <div id="folderList"></div>
-</div>
 
-<div class="container" id="lyricPage" style="display:none">
-  <div class="card">
-    <div class="lyrics-box">
-      <div class="lyrics-wrap" id="lyricWrap"></div>
-    </div>
-    <button class="btn gray" onclick="toggleLyric()">开关歌词</button>
+  <div class="area">
+    <h4>添加歌曲到歌单（下拉选择）</h4>
+    <select id="folderSelect">
+      <option value="">-- 选择歌单 --</option>
+    </select>
+    <button id="addToFolderBtn">把当前播放歌曲加入选中歌单</button>
+  </div>
+
+  <div class="area">
+    <h4>歌单列表</h4>
+    <div id="folderList"></div>
   </div>
 </div>
-
-<div class="play-bar">
-  <div class="time-text">
-    <span id="curTime">00:00</span>
-    <span id="durTime">00:00</span>
-  </div>
-  <div class="progress" id="progressBar">
-    <div class="progress-inner" id="progressInner"></div>
-  </div>
-  <div class="ctrl">
-    <button onclick="prevSong()">⏮</button>
-    <button onclick="playToggle()" id="playBtn">▶</button>
-    <button onclick="nextSong()">⏭</button>
-  </div>
-</div>
-
-<audio id="audio">
 
 <script>
-// 数据存储
-let data = JSON.parse(localStorage.getItem("musicData")) || {
-  songs: [],
-  folders: []
-};
-let curSongIndex = -1;
-let lyricList = [];
-let lyricOn = true;
-let audio = document.getElementById("audio");
-let tabs = document.querySelectorAll(".tab");
+let state = {
+  folders: [],
+  currentAudio: null,
+  lyrics: []
+}
+const audio = document.getElementById('audio')
+const audioFileInput = document.getElementById('audioFile')
+const lyricBox = document.getElementById('lyricBox')
+const folderSelect = document.getElementById('folderSelect')
+const folderListEl = document.getElementById('folderList')
 
-// 切换标签
-tabs.forEach(t=>{
-  t.onclick = ()=>{
-    tabs.forEach(x=>x.classList.remove("active"));
-    t.classList.add("active");
-    document.querySelectorAll(".container").forEach(p=>p.style.display="none");
-    document.getElementById(t.dataset.tab+"Page").style.display="block";
-  }
-})
+// 读取本地存储
+function loadData(){
+  const raw = localStorage.getItem('musicAppData')
+  if(raw) state.folders = JSON.parse(raw)
+  renderFolderSelect()
+  renderFolderList()
+}
+function saveData(){
+  localStorage.setItem('musicAppData', JSON.stringify(state.folders))
+}
+
+// 渲染下拉选项
+function renderFolderSelect(){
+  folderSelect.innerHTML = `<option value="">-- 选择歌单 --</option>`
+  state.folders.forEach((f,idx)=>{
+    const opt = document.createElement('option')
+    opt.value = idx
+    opt.textContent = f.name
+    folderSelect.appendChild(opt)
+  })
+}
+
+// 渲染所有歌单+歌曲
+function renderFolderList(){
+  folderListEl.innerHTML = ''
+  state.folders.forEach((folder,fIdx)=>{
+    const wrap = document.createElement('div')
+    wrap.style.margin='8px 0';wrap.style.padding='8px';wrap.style.background='#252525';wrap.style.borderRadius='8px'
+    wrap.innerHTML = `<b>${folder.name}</b> <button class="secondary del-folder" data-f="${fIdx}">删除歌单</button>`
+    folder.songs.forEach((song,sIdx)=>{
+      const item = document.createElement('div')
+      item.className = 'song-item'
+      item.innerHTML = `<span>${song.name}</span>
+      <div>
+        <button class="play-song" data-f="${fIdx}" data-s="${sIdx}">播放</button>
+        <button class="secondary remove-song" data-f="${fIdx}" data-s="${sIdx}">移除</button>
+      </div>`
+      wrap.appendChild(item)
+    })
+    folderListEl.appendChild(wrap)
+  })
+}
+
+// 创建新歌单
+document.getElementById('addFolderBtn').onclick = ()=>{
+  const name = document.getElementById('newFolderName').value.trim()
+  if(!name) return alert('请输入歌单名字')
+  state.folders.push({name, songs:[]})
+  saveData()
+  renderFolderSelect()
+  renderFolderList()
+  document.getElementById('newFolderName').value=''
+}
 
 // 导入音频
-document.getElementById("selectAudioBtn").onclick = ()=>document.getElementById("audioInput").click();
-document.getElementById("audioInput").onchange = async e=>{
-  let files = e.target.files;
-  for(let f of files){
-    let url = URL.createObjectURL(f);
-    data.songs.push({
-      name:f.name,
-      url:url,
-      folderId:null,
-      lrcText:""
-    })
+audioFileInput.onchange = async e=>{
+  const files = Array.from(e.target.files)
+  if(!files.length) return
+  const file = files[0]
+  state.currentAudio = file
+  audio.src = URL.createObjectURL(file)
+  audio.play()
+}
+
+// 添加当前歌曲到选中歌单
+document.getElementById('addToFolderBtn').onclick = ()=>{
+  const fIdx = folderSelect.value
+  if(fIdx === '') return alert('先选一个歌单')
+  if(!state.currentAudio) return alert('先导入一首音乐')
+  const folder = state.folders[Number(fIdx)]
+  const songInfo = {
+    name: state.currentAudio.name,
+    url: URL.createObjectURL(state.currentAudio)
   }
-  saveData();renderAll();
+  folder.songs.push(songInfo)
+  saveData()
+  renderFolderList()
+  alert(`已加入歌单：${folder.name}`)
 }
 
-// 绑定lrc
-document.getElementById("bindLrcBtn").onclick = ()=>document.getElementById("lrcInput").click();
-document.getElementById("lrcInput").onchange = async e=>{
-  if(curSongIndex<0) return alert("请先选中播放一首歌");
-  let f = e.target.files[0];
-  let txt = await f.text();
-  data.songs[curSongIndex].lrcText = txt;
-  saveData();
-  parseLrc(txt);
-}
-
-// 解析LRC歌词
-function parseLrc(text){
-  lyricList=[];
-  let reg = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/g;
-  let lines = text.split("\n");
-  for(let line of lines){
-    let match;
-    let times = [];
-    while((match=reg.exec(line))!==null){
-      let s = Number(match[1])*60 + Number(match[2]) + Number(match[3])/1000;
-      times.push(s);
-    }
-    let content = line.replace(reg,"").trim();
-    if(content && times.length){
-      times.forEach(t=>lyricList.push({time:t,text:content}))
-    }
+// 加载LRC歌词
+document.getElementById('loadLrcBtn').onclick = ()=>{
+  const inp = document.createElement('input')
+  inp.type='file'
+  inp.accept='.lrc'
+  inp.onchange = async ev=>{
+    const f = ev.target.files[0]
+    const txt = await f.text()
+    parseLRC(txt)
   }
-  lyricList.sort((a,b)=>a.time-b.time);
-  renderLyric();
+  inp.click()
 }
 
-function renderLyric(){
-  let wrap = document.getElementById("lyricWrap");
-  wrap.innerHTML = "";
-  lyricList.forEach(l=>{
-    let div = document.createElement("div");
-    div.className="lyric-line";
-    div.innerText = l.text;
-    wrap.appendChild(div);
-  })
+// 解析LRC
+function parseLRC(text){
+  state.lyrics = []
+  const reg = /\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/g
+  let m
+  while(m = reg.exec(text)){
+    const time = Number(m[1])*60 + Number(m[2]) + Number(m[3])/1000
+    state.lyrics.push({time, text:m[4].trim()})
+  }
+  state.lyrics.sort((a,b)=>a.time-b.time)
 }
 
-function updateLyricUI(){
-  if(!lyricOn || !lyricList.length) return;
-  let t = audio.currentTime;
-  let idx = lyricList.findIndex(x=>x.time>t);
-  if(idx===-1) idx=lyricList.length-1;
-  else idx = Math.max(0,idx-1);
-  let lines = document.querySelectorAll(".lyric-line");
-  lines.forEach((line,i)=>{
-    line.classList.toggle("active",i===idx);
-  })
-  document.getElementById("lyricWrap").style.transform = `translateY(${-(idx*34 - 100)}px)`
-}
-
-function toggleLyric(){
-  lyricOn = !lyricOn;
-  alert("歌词已"+(lyricOn?"开启":"关闭"))
-}
-
-// 文件夹
-function createFolder(){
-  let name = document.getElementById("folderName").value.trim();
-  if(!name) return;
-  data.folders.push({id:Date.now(),name});
-  document.getElementById("folderName").value="";
-  saveData();renderAll();
-}
-
-function playToggle(){
-  if(curSongIndex<0) return;
-  if(audio.paused) audio.play();
-  else audio.pause();
-}
-function prevSong(){
-  if(curSongIndex<=0) return;
-  curSongIndex--; playSong(curSongIndex);
-}
-function nextSong(){
-  if(curSongIndex >= data.songs.length-1) return;
-  curSongIndex++; playSong(curSongIndex);
-}
-function playSong(i){
-  curSongIndex=i;
-  let s = data.songs[i];
-  audio.src = s.url;
-  audio.play();
-  parseLrc(s.lrcText||"");
-  renderAll();
-}
-
+// 歌词滚动高亮
 audio.ontimeupdate = ()=>{
-  let p = audio.currentTime/audio.duration*100||0;
-  document.getElementById("progressInner").style.width = p+"%";
-  document.getElementById("curTime").innerText = fmtTime(audio.currentTime);
-  document.getElementById("durTime").innerText = fmtTime(audio.duration);
-  updateLyricUI();
-}
-audio.onended = nextSong;
-document.getElementById("progressBar").onclick = e=>{
-  let rect = e.target.getBoundingClientRect();
-  let pos = (e.clientX - rect.left)/rect.width;
-  audio.currentTime = pos*audio.duration;
-}
-function fmtTime(s){
-  let m = Math.floor(s/60);
-  let sec = Math.floor(s%60);
-  return String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");
-}
-
-function saveData(){
-  localStorage.setItem("musicData",JSON.stringify(data));
-}
-function renderAll(){
-  renderSongList();renderFolderList();
-  document.getElementById("playBtn").innerText = audio.paused?"▶":"⏸";
-}
-function renderSongList(){
-  let wrap = document.getElementById("songList");
-  wrap.innerHTML="";
-  data.songs.forEach((s,i)=>{
-    let div=document.createElement("div");
-    div.className="item";
-    div.innerHTML=`
-      <div class="name">${s.name}</div>
-      <div>
-        <button class="btn" onclick="playSong(${i})">播放</button>
-        <button class="btn gray" onclick="openAddToFolder(${i})">加入歌单</button>
-        <button class="btn red" onclick="delSong(${i})">删除</button>
-      </div>`
-    wrap.appendChild(div);
+  const t = audio.currentTime
+  let active = ''
+  for(let i=0;i<state.lyrics.length;i++){
+    if(state.lyrics[i].time <= t) active = state.lyrics[i].text
+  }
+  lyricBox.innerText = state.lyrics.map(l=>l.text).join('\n')
+  const lines = lyricBox.innerText.split('\n')
+  let html = ''
+  lines.forEach(line=>{
+    if(line === active) html += `<div class="lyric-active">${line}</div>`
+    else html += `<div>${line}</div>`
   })
+  lyricBox.innerHTML = html
 }
 
-// 弹出选择歌单，把指定歌曲加入
-function openAddToFolder(songIndex){
-  let folderOptions = data.folders.map(f=>`${f.id}:${f.name}`).join("\n");
-  if(!folderOptions) return alert("你还没有创建任何分类文件夹！");
-  let fid = prompt(`选择文件夹ID加入：\n${folderOptions}`);
-  if(!fid) return;
-  fid = Number(fid);
-  let targetFolder = data.folders.find(x=>x.id===fid);
-  if(!targetFolder) return alert("文件夹不存在");
-  data.songs[songIndex].folderId = fid;
-  saveData();renderAll();
-  alert("✅ 已加入【"+targetFolder.name+"】");
+// 播放、移除事件委托
+folderListEl.onclick = e=>{
+  const fIdx = Number(e.target.dataset.f)
+  const sIdx = Number(e.target.dataset.s)
+  if(e.target.classList.contains('play-song')){
+    const song = state.folders[fIdx].songs[sIdx]
+    audio.src = song.url
+    audio.play()
+  }else if(e.target.classList.contains('remove-song')){
+    state.folders[fIdx].songs.splice(sIdx,1)
+    saveData()
+    renderFolderList()
+  }else if(e.target.classList.contains('del-folder')){
+    state.folders.splice(fIdx,1)
+    saveData()
+    renderFolderSelect()
+    renderFolderList()
+  }
 }
 
-function removeSongFromFolder(songIndex){
-  data.songs[songIndex].folderId = null;
-  saveData();renderAll();
-}
-
-function delSong(i){
-  data.songs.splice(i,1);
-  if(curSongIndex===i) curSongIndex=-1;
-  saveData();renderAll();
-}
-function delFolder(fid){
-  // 删除文件夹的时候，把里面歌曲的folderId清空
-  data.songs.forEach(s=>{if(s.folderId===fid) s.folderId=null;})
-  data.folders = data.folders.filter(x=>x.id!==fid);
-  saveData();renderAll();
-}
-
-function renderFolderList(){
-  let wrap = document.getElementById("folderList");
-  wrap.innerHTML="";
-  data.folders.forEach(f=>{
-    let folderSongs = data.songs.filter(s=>s.folderId === f.id);
-    let div=document.createElement("div");
-    div.className="card";
-    let songHtml = "";
-    folderSongs.forEach((s)=>{
-      let idx = data.songs.indexOf(s);
-      songHtml += `
-        <div class="folder-song-item">
-          <div class="name">${s.name}</div>
-          <div>
-            <button class="btn" onclick="playSong(${idx})">播放</button>
-            <button class="btn red" onclick="removeSongFromFolder(${idx})">移出</button>
-          </div>
-        </div>`
-    })
-    div.innerHTML=`
-      <div class="folder-title">
-        <div style="font-size:18px">📁 ${f.name} <span style="color:#aaa;font-size:14px">(${folderSongs.length}首)</span></div>
-        <button class="btn red" onclick="delFolder(${f.id})">删除分类</button>
-      </div>
-      <div style="margin-top:10px">
-        ${folderSongs.length?songHtml:"<div style='color:#999;padding:8px'>暂无歌曲</div>"}
-      </div>
-    `
-    wrap.appendChild(div);
-  })
-}
-
-renderAll();
+loadData()
 </script>
 </body>
 </html>
